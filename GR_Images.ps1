@@ -1,36 +1,49 @@
 ﻿cls
-$jobServers = 1..15 | % { "{0:D2}" -f $_}
-$appServers = 1..30 | % { "{0:D2}" -f $_}
-$jobServerNames = "spjob01" #$jobServers | % { "spjob$_"}
+$logpath = "C:\Documents and Settings\asrebroski.VOCUSPROD\Desktop\file_count.txt"
+$jobServers = 1..20 | % { "{0:D2}" -f $_}
+$appServers = 1..35 | % { "{0:D2}" -f $_}
+$jobServerNames = $jobServers | % { "spjob$_"} #"spjob01" 
 $appServerNames = $appServers | % { "spapp$_"}
-$array = @()
 $drives = @("c$", "d$")
 $jobServerDirs = @("\VocusWeb\GRWeb\GRConvert1\Images\Internal", "\VocusWeb\GRWeb\GRSpace1\Images\Internal", "\VocusWeb\GRWeb\GRSpace2\Images\Internal", "\VocusWeb\GRWeb\VocusGR\Images\Internal", "\VocusWeb\GRWeb\GRSpace3\Images\Internal", "\VocusWeb\GRWeb\Tasb\Images\Internal", "\VocusWeb\GRWeb\vfw\Images\Internal", "\VocusWeb\GRSecure\SecureGR\Images\Internal", "\VocusWeb\Universal\GR\Images\Internal")
+$emailFrom = "GRimages@vocus.com"
+$emailTo = "asrebroski@vocus.com"
+$subject = "GR Images report"
+
+
+
+rm $logpath -Force
 
 foreach ($ServerName in $jobServerNames ) {
 $ping = Test-Connection $ServerName -Count 1 -q
 
 if ($ping) 
 {
+$blaharray = @()
 Write-Host "$ServerName is alive! Checking for image directories."
-
 Foreach ($drive in $drives) {
 $jobServerDirs | % {
 $jobServerPath = "\\" + "$ServerName" + "\" + "$drive" + "$_"
 
-$array += $jobServerPath
+$blaharray += $jobServerPath
 }
 }
 
-$array | % {
+$blaharray | % {
 $jobTestPath = Test-Path $_
 
 if ($jobTestPath -eq $True)
 {
-Write-Host "$_  path exists!"
+Write-Host "$_ path exists!"
 $filecount = (Get-ChildItem $_).Count
 Write-Host "$_ has $filecount images"
+
+"$_" + " - " + "$filecount"  >> $logpath 
 }
 }
 }
+clv blaharray
 }
+
+$body= [string]::join("`r`n", (Get-Content $logpath))
+Send-MailMessage -SmtpServer spmail05.vocus.com -From $emailFrom -To $emailTo -Subject $subject -Body $body
